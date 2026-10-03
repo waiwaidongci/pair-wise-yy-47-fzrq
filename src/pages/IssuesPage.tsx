@@ -19,9 +19,11 @@ import { FilterOutlined, MergeCellsOutlined, SaveOutlined, TeamOutlined } from '
 import { useIssues } from '../api/useIssues'
 import { useWorkspaceStore } from '../store/useWorkspaceStore'
 import type { Issue } from '../api/types'
+import { chainState, chainSummary } from '../api/engine'
 
 const impactColor: Record<string, string> = { 致命: 'red', 严重: 'volcano', 中等: 'gold', 轻微: 'blue' }
 const statusColor: Record<string, string> = { 待分配: 'default', 修复中: 'processing', 待复测: 'orange', 已通过: 'success', 已退回: 'error', 不适用: 'default' }
+const chainColor: Record<string, string> = { 回归: 'red', 结论失效: 'volcano', 已退回: 'orange', 待复测: 'gold', 已通过: 'green', 处理中: 'default' }
 
 export default function IssuesPage() {
   useIssues()
@@ -65,6 +67,19 @@ export default function IssuesPage() {
     { title: '优先级', dataIndex: 'priority', width: 76, render: (value) => <Tag>{value}</Tag> },
     { title: '团队 / 负责人', dataIndex: 'team', width: 160, render: (_, record) => <div>{record.team}<br /><Typography.Text type="secondary">{record.owner}</Typography.Text></div> },
     { title: '状态', dataIndex: 'status', width: 95, render: (value) => <Tag color={statusColor[value]}>{value}</Tag> },
+    {
+      title: '结论链',
+      width: 130,
+      render: (_, record) => {
+        const state = chainState(record)
+        return (
+          <div>
+            <Tag color={chainColor[state]}>{state}</Tag>
+            {record.chain.length > 1 && <div><Typography.Text type="secondary" style={{ fontSize: 10 }}>{chainSummary(record)}</Typography.Text></div>}
+          </div>
+        )
+      },
+    },
     { title: '截止', dataIndex: 'dueDate', width: 105 },
     { title: '', width: 76, fixed: 'right', render: (_, record) => <Button type="link" onClick={() => setDetail(record)}>详情</Button> },
   ]
@@ -117,7 +132,7 @@ export default function IssuesPage() {
             dataSource={data}
             pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `共 ${total} 条` }}
             rowSelection={{ selectedRowKeys: selectedKeys, onChange: (keys) => setSelectedKeys(keys as string[]) }}
-            scroll={{ x: 1250 }}
+            scroll={{ x: 1390 }}
           />
         </div>
       </div>
@@ -137,6 +152,35 @@ export default function IssuesPage() {
               <dt>修复说明</dt><dd>{detail.fixNote ?? '开发尚未提交'}</dd>
               <dt>复测环境</dt><dd>{detail.retestEnv ?? '待开发提交'}</dd>
             </dl>
+            <div>
+              <Typography.Title level={5}>结论链</Typography.Title>
+              <Space wrap style={{ marginBottom: 8 }}>
+                <Tag color={chainColor[chainState(detail)]}>当前：{chainState(detail)}</Tag>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>{chainSummary(detail) || '尚无周期'}</Typography.Text>
+              </Space>
+              {detail.chain.map((cycle) => (
+                <div className="timeline-item" key={cycle.index}>
+                  <Space size={6} wrap>
+                    <Typography.Text strong>周期 #{cycle.index + 1}</Typography.Text>
+                    <Tag>{cycle.openReason}</Tag>
+                    {cycle.verdict ? <Tag color={cycle.verdict === '通过' ? 'success' : cycle.verdict === '退回' ? 'error' : 'default'}>{cycle.verdict}{cycle.conclusionVersion ? ` · ${cycle.conclusionVersion}` : ''}</Tag> : <Tag color="gold">待复测</Tag>}
+                    {!cycle.valid && <Tag color="volcano">已失效 · {cycle.invalidReason}</Tag>}
+                  </Space>
+                  <div className="muted" style={{ fontSize: 11 }}>{cycle.openedAt} 打开 · rev {cycle.openedRevision}{cycle.concludedAt && ` · ${cycle.concludedAt} 结论（${cycle.concludedBy}）`}</div>
+                </div>
+              ))}
+            </div>
+            <div>
+              <Typography.Title level={5}>复测记录（按周期保留，回归不清除）</Typography.Title>
+              {detail.retestRecords.length === 0 && <Typography.Text type="secondary">暂无复测记录</Typography.Text>}
+              {detail.retestRecords.map((record) => (
+                <div className="timeline-item" key={record.id}>
+                  <Space size={6} wrap><Tag>周期 #{(record.cycleIndex ?? 0) + 1}</Tag><Tag color={record.result === '通过' ? 'success' : record.result === '退回' ? 'error' : 'default'}>{record.result}</Tag><Typography.Text strong>{record.actor}</Typography.Text></Space>
+                  <div>{record.note}</div>
+                  <Typography.Text type="secondary" style={{ fontSize: 11 }}>{record.at} · {record.environment ?? ''} {record.testVersion ? `· ${record.testVersion}` : ''}{record.batchId ? ` · 批次 ${record.batchId}` : ''}</Typography.Text>
+                </div>
+              ))}
+            </div>
             <div>
               <Typography.Title level={5}>操作历史</Typography.Title>
               {detail.history.map((event, index) => <div className="timeline-item" key={index}><Typography.Text strong>{event.action}</Typography.Text><div>{event.detail}</div><Typography.Text type="secondary" style={{ fontSize: 11 }}>{event.actor} · {event.at}</Typography.Text></div>)}

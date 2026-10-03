@@ -3,18 +3,21 @@ import { ArrowRightOutlined, CheckCircleOutlined, ClockCircleOutlined, Exclamati
 import { useNavigate } from 'react-router-dom'
 import { useIssues } from '../api/useIssues'
 import { useWorkspaceStore } from '../store/useWorkspaceStore'
+import { chainState } from '../api/engine'
 
 export default function DashboardPage() {
   useIssues()
   const issues = useWorkspaceStore((state) => state.issues)
   const navigate = useNavigate()
   const open = issues.filter((item) => !['已通过', '不适用'].includes(item.status))
-  const passed = issues.filter((item) => item.status === '已通过').length
+  const passed = issues.filter((item) => chainState(item) === '已通过').length
+  const regressions = issues.filter((item) => chainState(item) === '回归')
+  const invalidated = issues.filter((item) => chainState(item) === '结论失效')
   const critical = issues.filter((item) => item.impact === '致命' || item.impact === '严重').length
   const coverage = Math.round((passed / issues.length) * 100)
   const bySite = Array.from(new Set(issues.map((item) => item.site))).map((site) => {
     const items = issues.filter((issue) => issue.site === site)
-    return { site, total: items.length, passed: items.filter((item) => item.status === '已通过').length }
+    return { site, total: items.length, passed: items.filter((item) => chainState(item) === '已通过').length }
   })
 
   return (
@@ -32,10 +35,10 @@ export default function DashboardPage() {
       </div>
 
       <div className="metric-grid">
-        <div className="metric-card"><span>开放问题</span><strong>{open.length}</strong><small>{issues.length} 条总记录</small></div>
+        <div className="metric-card"><span>开放问题</span><strong>{open.length}</strong><small>{issues.length} 条总记录（回归不另开）</small></div>
         <div className="metric-card"><span>严重 / 致命</span><strong style={{ color: '#b84f32' }}>{critical}</strong><small>需优先排期</small></div>
-        <div className="metric-card"><span>复测通过率</span><strong>{coverage}%</strong><small>当前版本口径</small></div>
-        <div className="metric-card"><span>覆盖站点</span><strong>{bySite.length}</strong><small>统一 WCAG 2.2 AA</small></div>
+        <div className="metric-card"><span>有效通过率</span><strong>{coverage}%</strong><small>仅统计当前有效通过结论</small></div>
+        <div className="metric-card"><span>回归 / 失效</span><strong style={{ color: regressions.length || invalidated.length ? '#b84f32' : undefined }}>{regressions.length} / {invalidated.length}</strong><small>沿用原问题重开周期</small></div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.2fr) minmax(300px,.8fr)', gap: 14 }}>
@@ -58,14 +61,14 @@ export default function DashboardPage() {
           <div className="panel-head"><h3>处理关注</h3><span className="muted">智能排序</span></div>
           <div style={{ padding: 12 }}>
             {[
-              { icon: <ExclamationCircleOutlined />, tone: '#ba4d31', title: 'P0 键盘陷阱', detail: 'A11Y-1048 已修复但尚未提交复测', action: '前往复测' },
+              { icon: <ExclamationCircleOutlined />, tone: '#ba4d31', title: regressions.length ? `检出 ${regressions.length} 项回归` : 'A11Y-1048 待提交复测', detail: regressions.length ? `${regressions.map((item) => item.key).join('、')} 同一根因再次出现，已沿原问题新开周期，旧通过记录保留` : 'P0 键盘陷阱已修复但尚未提交复测', action: '前往复测' },
               { icon: <ClockCircleOutlined />, tone: '#ba8529', title: '2 项临近截止', detail: '未来 3 天内到期，涉及基础组件组', action: '查看排期' },
-              { icon: <CheckCircleOutlined />, tone: '#367d61', title: '重复问题合并节省 6 次处理', detail: '根因“Drawer focus trap”关联 3 项问题', action: '查看合并关系' },
+              { icon: <CheckCircleOutlined />, tone: '#367d61', title: '结论链贯穿问题→复测→版本差异', detail: '根因“Drawer focus trap”关联 3 项问题；回退或证据过期时结论立即失效重算', action: '查看版本差异' },
             ].map((item) => (
               <div key={item.title} style={{ display: 'flex', gap: 10, padding: 12, borderBottom: '1px solid #edf1f2' }}>
                 <span style={{ color: item.tone, fontSize: 20 }}>{item.icon}</span>
                 <div style={{ flex: 1 }}><Typography.Text strong>{item.title}</Typography.Text><Typography.Paragraph type="secondary" style={{ margin: '5px 0 0', fontSize: 12 }}>{item.detail}</Typography.Paragraph></div>
-                <Button size="small" type="link" onClick={() => navigate('/retest')}>{item.action}</Button>
+                <Button size="small" type="link" onClick={() => navigate(item.action === '查看版本差异' ? '/versions' : '/retest')}>{item.action}</Button>
               </div>
             ))}
           </div>
