@@ -47,7 +47,19 @@ export const seedIssues: Issue[] = [
     mergedKeys: [],
     fixNote: '增加关闭后的 triggerRef.focus 恢复逻辑。',
     retestEnv: 'Chrome 140 / VoiceOver / 商城 v4.18.3',
-    retestRecords: [{ id: 'RT-22', actor: '苏禾', result: '通过', note: '焦点返回触发按钮，顺序正确。', at: '09-28 14:20' }],
+    retestRecords: [
+      {
+        id: 'RT-22',
+        actor: '苏禾',
+        result: '通过',
+        note: '焦点返回触发按钮，顺序正确。',
+        at: '09-28 14:20',
+        environment: 'Chrome 140 / VoiceOver / 商城 v4.18.3',
+        basedOnVersion: 'v4.18',
+        evidenceHash: '',
+        conclusionId: '',
+      },
+    ],
     history: commonHistory('客服弹窗焦点恢复'),
   },
   {
@@ -113,7 +125,19 @@ export const seedIssues: Issue[] = [
     dueDate: '2026-10-05',
     mergedKeys: [],
     fixNote: '计划仅增加视觉错误颜色。',
-    retestRecords: [{ id: 'RT-31', actor: '李予', result: '退回', note: '仍需接入 aria-live，并验证字段 aria-describedby。', at: '09-28 11:05' }],
+    retestRecords: [
+      {
+        id: 'RT-31',
+        actor: '李予',
+        result: '退回',
+        note: '仍需接入 aria-live，并验证字段 aria-describedby。',
+        at: '09-28 11:05',
+        environment: 'Safari 26 / 采购门户 v1.12',
+        basedOnVersion: 'v1.12',
+        evidenceHash: '',
+        conclusionId: '',
+      },
+    ],
     history: commonHistory('表单错误提示'),
   },
 ]

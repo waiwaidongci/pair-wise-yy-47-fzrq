@@ -34,7 +34,7 @@ export default function DashboardPage() {
       <div className="metric-grid">
         <div className="metric-card"><span>开放问题</span><strong>{open.length}</strong><small>{issues.length} 条总记录</small></div>
         <div className="metric-card"><span>严重 / 致命</span><strong style={{ color: '#b84f32' }}>{critical}</strong><small>需优先排期</small></div>
-        <div className="metric-card"><span>复测通过率</span><strong>{coverage}%</strong><small>当前版本口径</small></div>
+        <div className="metric-card"><span>复测通过率</span><strong>{coverage}%</strong><small>按当前有效结论口径</small></div>
         <div className="metric-card"><span>覆盖站点</span><strong>{bySite.length}</strong><small>统一 WCAG 2.2 AA</small></div>
       </div>
 

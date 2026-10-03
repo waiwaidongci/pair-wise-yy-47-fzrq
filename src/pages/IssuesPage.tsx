@@ -19,6 +19,7 @@ import { FilterOutlined, MergeCellsOutlined, SaveOutlined, TeamOutlined } from '
 import { useIssues } from '../api/useIssues'
 import { useWorkspaceStore } from '../store/useWorkspaceStore'
 import type { Issue } from '../api/types'
+import ConclusionChainView from '../components/ConclusionChainView'
 
 const impactColor: Record<string, string> = { 致命: 'red', 严重: 'volcano', 中等: 'gold', 轻微: 'blue' }
 const statusColor: Record<string, string> = { 待分配: 'default', 修复中: 'processing', 待复测: 'orange', 已通过: 'success', 已退回: 'error', 不适用: 'default' }
@@ -65,6 +66,15 @@ export default function IssuesPage() {
     { title: '优先级', dataIndex: 'priority', width: 76, render: (value) => <Tag>{value}</Tag> },
     { title: '团队 / 负责人', dataIndex: 'team', width: 160, render: (_, record) => <div>{record.team}<br /><Typography.Text type="secondary">{record.owner}</Typography.Text></div> },
     { title: '状态', dataIndex: 'status', width: 95, render: (value) => <Tag color={statusColor[value]}>{value}</Tag> },
+    {
+      title: '有效结论',
+      dataIndex: 'chain',
+      width: 110,
+      render: (chain: Issue['chain']) => {
+        const head = chain?.conclusions.filter((c) => c.status === '有效').sort((a, b) => b.seq - a.seq)[0]
+        return head ? <Tag color={head.result === '通过' ? 'success' : head.result === '退回' ? 'error' : 'default'}>{head.result} · C{head.seq}</Tag> : <Tag>无</Tag>
+      },
+    },
     { title: '截止', dataIndex: 'dueDate', width: 105 },
     { title: '', width: 76, fixed: 'right', render: (_, record) => <Button type="link" onClick={() => setDetail(record)}>详情</Button> },
   ]
@@ -137,6 +147,10 @@ export default function IssuesPage() {
               <dt>修复说明</dt><dd>{detail.fixNote ?? '开发尚未提交'}</dd>
               <dt>复测环境</dt><dd>{detail.retestEnv ?? '待开发提交'}</dd>
             </dl>
+            <div>
+              <Typography.Title level={5}>结论链（问题 ↔ 复测记录 ↔ 版本差异）</Typography.Title>
+              <ConclusionChainView conclusions={detail.chain?.conclusions ?? []} />
+            </div>
             <div>
               <Typography.Title level={5}>操作历史</Typography.Title>
               {detail.history.map((event, index) => <div className="timeline-item" key={index}><Typography.Text strong>{event.action}</Typography.Text><div>{event.detail}</div><Typography.Text type="secondary" style={{ fontSize: 11 }}>{event.actor} · {event.at}</Typography.Text></div>)}
